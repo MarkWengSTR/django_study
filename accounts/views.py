@@ -56,8 +56,21 @@ def loginPage(request):
     return render(request, 'accounts/login.html')
 
 
+@login_required(login_url='login')
+@allowed_users(allowed_roles=['customer'])
 def userProfile(request):
-    return render(request, 'accounts/user.html')
+    orders = request.user.customer.order_set.all()
+
+    total_orders = orders.count()
+    delivered = orders.filter(status='Delivered').count()
+    pending = orders.filter(status='Pending').count()
+
+    return render(request, 'accounts/user.html', {
+        'orders': orders,
+        'total_orders': total_orders,
+        'pending': pending,
+        'delivered': delivered,
+    })
 
 
 def logoutUser(request):
@@ -77,6 +90,11 @@ def register(request):
 
             group = Group.objects.get(name='customer')
             user.groups.add(group)
+
+            Customer.objects.create(
+                user=user,
+                name=user.username,
+            )
 
             messages.success(request, 'account was created for ' +
                              form.cleaned_data.get('username'))
