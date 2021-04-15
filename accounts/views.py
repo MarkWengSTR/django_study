@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Product, Order, Customer
 from .forms import OrderForm, CreateUserForm
 from .filters import OrderFilter
+from .decorators import already_authenticated_user
 
 
 @login_required(login_url='login')
@@ -33,26 +34,28 @@ def home(request):
     })
 
 
+@already_authenticated_user
 def loginPage(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    else:
-        if request.method == 'POST':
-            username = request.POST.get('username')
-            password = request.POST.get('password')
-            user = authenticate(
-                request,
-                username=username,
-                password=password,
-            )
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(
+            request,
+            username=username,
+            password=password,
+        )
 
-            if user is not None:
-                login(request, user)
-                return redirect('home')
-            else:
-                messages.info(request, 'Username OR Password is incorrect')
+        if user is not None:
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.info(request, 'Username OR Password is incorrect')
 
-        return render(request, 'accounts/login.html')
+    return render(request, 'accounts/login.html')
+
+
+def userProfile(request):
+    return render(request, 'accounts/user.html')
 
 
 def logoutUser(request):
@@ -60,23 +63,21 @@ def logoutUser(request):
     return redirect('login')
 
 
+@already_authenticated_user
 def register(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    else:
-        form = CreateUserForm()
+    form = CreateUserForm()
 
-        if request.method == 'POST':
-            form = CreateUserForm(request.POST)
+    if request.method == 'POST':
+        form = CreateUserForm(request.POST)
 
-            if form.is_valid():
-                form.save()
+        if form.is_valid():
+            form.save()
 
-                messages.success(request, 'account was created for ' +
-                                 form.cleaned_data.get('username'))
-                return redirect('login')
+            messages.success(request, 'account was created for ' +
+                             form.cleaned_data.get('username'))
+            return redirect('login')
 
-        return render(request, 'accounts/register.html', {'form': form})
+    return render(request, 'accounts/register.html', {'form': form})
 
 
 @login_required(login_url='login')
