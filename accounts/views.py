@@ -5,15 +5,17 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
 
 # Create your views here.
 from .models import Product, Order, Customer
 from .forms import OrderForm, CreateUserForm
 from .filters import OrderFilter
-from .decorators import already_authenticated_user
+from .decorators import already_authenticated_user, allowed_users, admin_only
 
 
 @login_required(login_url='login')
+@admin_only
 def home(request):
     orders = Order.objects.all()
     customers = Customer.objects.all()
@@ -71,7 +73,10 @@ def register(request):
         form = CreateUserForm(request.POST)
 
         if form.is_valid():
-            form.save()
+            user = form.save()
+
+            group = Group.objects.get(name='customer')
+            user.groups.add(group)
 
             messages.success(request, 'account was created for ' +
                              form.cleaned_data.get('username'))
@@ -81,6 +86,7 @@ def register(request):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def products(request):
     products = Product.objects.all()
 
@@ -88,6 +94,7 @@ def products(request):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def customer(request, pk):
     customer = Customer.objects.get(id=pk)
 
@@ -106,6 +113,7 @@ def customer(request, pk):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def createOrder(request, pk):
     OrderFormSet = inlineformset_factory(
         Customer, Order, fields=('product', 'status'), extra=10)
@@ -127,6 +135,7 @@ def createOrder(request, pk):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def updateOrder(request, pk):
     order = Order.objects.get(id=pk)
     form = OrderForm(instance=order)
@@ -144,6 +153,7 @@ def updateOrder(request, pk):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def deleteOrder(request, pk):
     order = Order.objects.get(id=pk)
 
